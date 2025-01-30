@@ -1,7 +1,12 @@
 import datetime
+import json
+import os
+
+import requests
 
 import pandas as pd
 from pandas import DataFrame
+from dotenv import load_dotenv
 
 
 
@@ -45,8 +50,27 @@ def get_top_transactions(filtered_df: DataFrame) -> list[dict]:
         el["date"] = el["date"].strftime("%d.%m.%Y")
     return sorted_dict_top_formatted_renamed
 
-def get_exchange_rate():
-    pass
+def get_exchange_rates(date_obj: datetime) -> list[dict]:
+    """Функция принимает объект datetime и возвращает список словарей, содержащий курсы валют, актуальные на принятую
+    дату. Валюты загружаются из файла user_settings.json, находящегося в корне проекта"""
+    exchange_rates = []
+    date_str = date_obj.strftime("%Y-%m-%d")
+    with open("../user_settings.json") as f:
+        user_settings = json.load(f)
+        user_currencies = user_settings["user_currencies"]
+    for currency in user_currencies:
+        currency_dict = {"currency": currency}
+        load_dotenv()
+        api_key = os.getenv("API_KEY_EXCHANGE")
+        url = f"https://api.apilayer.com/exchangerates_data/convert?to=RUB&from={currency}&amount=1&date={date_str}"
+        payload = {}
+        headers = {"apikey": api_key}
+        response = requests.request("GET", url, headers=headers, data=payload)
+        response_dict = response.json()
+        currency_dict["rate"] = round(float(response_dict["result"]), 2)
+        exchange_rates.append(currency_dict)
+    return exchange_rates
+
 
 def get_stock_prices():
     pass
@@ -86,5 +110,3 @@ def dataframe_filter_by_source(filtered_by_operation_df: DataFrame) -> DataFrame
     """Функция принимает отсортированный по дате и типу операции DataFrame и возвращает только операции по картам"""
     filtered_by_source_df = filtered_by_operation_df[filtered_by_operation_df["Номер карты"] != 0]
     return filtered_by_source_df
-
-
