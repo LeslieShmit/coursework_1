@@ -25,6 +25,8 @@ def get_card_data(filtered_df: DataFrame) -> list[dict]:
     total_transactions_df = pd.DataFrame({"last_digits": total_transactions_series.index, "total_spent": total_transactions_series.values})
     total_transactions_df["cashback"] = round(total_transactions_df["total_spent"] / 100, 2)
     card_data = total_transactions_df.to_dict("records")
+    for el in card_data:
+        el["last_digits"] = el["last_digits"].replace("*", "")
     return card_data
 
 
@@ -65,12 +67,18 @@ def dataframe_filter_by_date(df: DataFrame, date_obj: datetime) -> DataFrame:
     return filtered_by_date_df
 
 def dataframe_filter_by_operation(filtered_by_date_df: DataFrame) -> DataFrame:
-    """Функция принимает отсортированный по входящей дате DataFrame и возвращает только траты со статусом OK и только
-    по картам"""
-    filtered_df = filtered_by_date_df[(filtered_by_date_df["Сумма платежа"] < 0) & (filtered_by_date_df["Статус"] == "OK") & (filtered_by_date_df["Номер карты"] != 0)]
-    return filtered_df
+    """Функция принимает отсортированный по входящей дате DataFrame и возвращает только траты со статусом OK"""
+    filtered_by_operation_df = filtered_by_date_df[(filtered_by_date_df["Сумма платежа"] < 0) & (filtered_by_date_df["Статус"] == "OK")]
+    return filtered_by_operation_df
+
+def dataframe_filter_by_source(filtered_by_operation_df: DataFrame) -> DataFrame:
+    """Функция принимает отсортированный по дате и типу операции DataFrame и возвращает только операции по картам"""
+    filtered_by_source_df = filtered_by_operation_df[filtered_by_operation_df["Номер карты"] != 0]
+    return filtered_by_source_df
+
 
 # print(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2021-12-22 17:12:22")))
-# print(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22"))).to_dict("records"))
-
-# print(get_card_data(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2021-12-22 17:12:22")))))
+# print(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22"))).shape)
+# print(dataframe_filter_by_source(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22")))).shape)
+# print(dataframe_filter_by_source(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22")))))
+# print(get_card_data(dataframe_filter_by_source(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22"))))))
