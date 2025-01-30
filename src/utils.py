@@ -4,6 +4,7 @@ import pandas as pd
 from pandas import DataFrame
 
 
+
 def greeting(date_obj: datetime) -> str:
     """Функция принимает объект datetime и в зависимости от времени возвращает строку с приветствием (Доброе утро:
      6-00 - 11-00, Добрый день: 12-00 - 18-00, Добрый вечер: 18-00 - 00-00, Доброй ночи: 00-00 - 06-00)"""
@@ -31,8 +32,18 @@ def get_card_data(filtered_df: DataFrame) -> list[dict]:
 
 
 
-def get_top_transactions():
-    pass
+def get_top_transactions(filtered_df: DataFrame) -> list[dict]:
+    """Функция принимает отсортированный DataFrame с тратами и возвращает список словарей с 5 самыми большими. В
+    словарях помимо суммы траты указаны дата, категория и описание"""
+    sorted_df = filtered_df.sort_values(by="Сумма платежа")
+    sorted_df_top = sorted_df.head()
+    sorted_df_top_formatted = sorted_df_top[["Дата операции", "Сумма платежа", "Категория", "Описание"]]
+    sorted_df_top_formatted_renamed = sorted_df_top_formatted.rename(columns={"Дата операции": "date", "Сумма платежа": "amount", "Категория": "category", "Описание": "description"})
+    sorted_dict_top_formatted_renamed = sorted_df_top_formatted_renamed.to_dict("records")
+    for el in sorted_dict_top_formatted_renamed:
+        el["date"] = el["date"].to_pydatetime()
+        el["date"] = el["date"].strftime("%d.%m.%Y")
+    return sorted_dict_top_formatted_renamed
 
 def get_exchange_rate():
     pass
@@ -77,8 +88,3 @@ def dataframe_filter_by_source(filtered_by_operation_df: DataFrame) -> DataFrame
     return filtered_by_source_df
 
 
-# print(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2021-12-22 17:12:22")))
-# print(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22"))).shape)
-# print(dataframe_filter_by_source(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22")))).shape)
-# print(dataframe_filter_by_source(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22")))))
-# print(get_card_data(dataframe_filter_by_source(dataframe_filter_by_operation(dataframe_filter_by_date(file_xlsx_reader("../data/operations.xlsx"), date_converter("2019-05-22 17:12:22"))))))
