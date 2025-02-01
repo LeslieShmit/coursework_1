@@ -11,6 +11,7 @@ import pandas as pd
 from pandas import DataFrame
 from dotenv import load_dotenv
 from logging import DEBUG
+from config import PATH_TO_USER_SETTINGS
 
 logger = logging.getLogger("utils")
 logger.setLevel(DEBUG)
@@ -73,10 +74,10 @@ def get_top_transactions(filtered_df: DataFrame) -> list[dict]:
 def get_exchange_rates(date_obj: datetime) -> list[dict]:
     """Функция принимает объект datetime и возвращает список словарей, содержащий курсы валют, актуальные на принятую
     дату. Валюты загружаются из файла user_settings.json, находящегося в корне проекта"""
-    logging.info("Запрос на получение курсов валют")
+    logger.info("Запрос на получение курсов валют")
     exchange_rates = []
     date_str = date_obj.strftime("%Y-%m-%d")
-    with open("../user_settings.json") as f:
+    with open(PATH_TO_USER_SETTINGS) as f:
         user_settings = json.load(f)
         user_currencies = user_settings["user_currencies"]
     for currency in user_currencies:
@@ -89,18 +90,18 @@ def get_exchange_rates(date_obj: datetime) -> list[dict]:
         response = requests.request("GET", url, headers=headers, data=payload)
         status_code = response.status_code
         if status_code != 200:
-            logging.error(f"Ошибка при запросе курса валюты {currency} {status_code}: {response.reason}")
+            logger.error(f"Ошибка при запросе курса валюты {currency} {status_code}: {response.reason}")
         response_dict = response.json()
         currency_dict["rate"] = round(float(response_dict["result"]), 2)
         exchange_rates.append(currency_dict)
-    logging.info("Завершено успешно")
+    logger.info("Завершено успешно")
     return exchange_rates
 
 
 def get_stock_prices(datetime_obj: datetime) -> list[dict]:
     """Функция принимает объект datetime и возвращает список словарей со стоимостью акций. Компании, стоимость акций
     которых необходимо вернуть, загружаются из файла user_settings.json, находящегося в корне проекта"""
-    logging.info("Запрос на получение стоимости акций")
+    logger.info("Запрос на получение стоимости акций")
     stock_prices = []
     datetime_obj = datetime_obj.replace(tzinfo=None).astimezone(tz=pytz.timezone("US/Eastern"))
     current_date = datetime.datetime.now(tz=pytz.timezone("US/Eastern")).date()
@@ -116,7 +117,7 @@ def get_stock_prices(datetime_obj: datetime) -> list[dict]:
         datetime_obj = datetime_obj.replace(hour=19, minute=59, second=0)
     month_str = datetime_obj.strftime("%Y-%m")
     datetime_obj_original = datetime_obj
-    with open("../user_settings.json") as f:
+    with open(PATH_TO_USER_SETTINGS) as f:
         user_settings = json.load(f)
         user_stocks = user_settings["user_stocks"]
     for stock in user_stocks:
@@ -127,9 +128,12 @@ def get_stock_prices(datetime_obj: datetime) -> list[dict]:
         r = requests.get(url)
         status_code = r.status_code
         if status_code != 200:
-            logging.error(f"Ошибка при получении стоимости акции {stock} {status_code}: {r.reason}")
+            logger.error(f"Ошибка при получении стоимости акции {stock} {status_code}: {r.reason}")
         data = r.json()
         datetime_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+        if data == {"Information": "Thank you for using Alpha Vantage! Our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits."}:
+            logger.error("Ошибка. Превышен лимит запросов")
+            raise requests.exceptions.RequestException("Превышен лимит запросов")
         while datetime_str not in data["Time Series (1min)"]:
             datetime_obj = datetime_obj - datetime.timedelta(days=1)
             datetime_obj = datetime_obj.replace(hour=19, minute=59, second=0)
@@ -140,7 +144,7 @@ def get_stock_prices(datetime_obj: datetime) -> list[dict]:
                 r = requests.get(url)
                 status_code = r.status_code
                 if status_code != 200:
-                    logging.error(f"Ошибка при получении стоимости акции {stock} {status_code}: {r.reason}")
+                    logger.error(f"Ошибка при получении стоимости акции {stock} {status_code}: {r.reason}")
                 data = r.json()
         stock_dict["price"] = round(float(data["Time Series (1min)"][datetime_str]["4. close"]), 2)
         stock_prices.append(stock_dict)
@@ -150,56 +154,56 @@ def get_stock_prices(datetime_obj: datetime) -> list[dict]:
 def date_converter(date_and_time_str: str) -> datetime:
     """Функция принимает строку с датой и временем в формате YYYY-MM-DD HH:MM:SS и возвращает объект datetime. Если
     дата позже нынешней - выбрасывает ошибку."""
-    logging.info("Преобразование даты и времени в объект DateTime")
+    logger.info("Преобразование даты и времени в объект DateTime")
     date_object = datetime.datetime.strptime(date_and_time_str, "%Y-%m-%d %H:%M:%S")
     if date_object > datetime.datetime.now():
-        logging.error("Ошибка. Входящие дата и время не могут быть позже настоящих")
+        logger.error("Ошибка. Входящие дата и время не могут быть позже настоящих")
         raise ValueError("Входящие дата и время не могут быть позже настоящих")
-    logging.info("Завершено успешно")
+    logger.info("Завершено успешно")
     return date_object
 
 def file_xlsx_reader(path_to_file: str) -> DataFrame:
     """Функция принимает путь до файла в формате xlsx и возвращает dataframe, с которым в последствии можно работать."""
-    logging.info(f"Открытие файла {path_to_file}")
+    logger.info(f"Открытие файла {path_to_file}")
     try:
         transaction_data_exel = pd.read_excel(path_to_file, parse_dates=True)
     except FileNotFoundError:
-        logging.error(f"Ошибка: файл {path_to_file} не найден")
+        logger.error(f"Ошибка: файл {path_to_file} не найден")
         raise FileNotFoundError(f"Ошибка: файл {path_to_file} не найден")
     else:
         transaction_data_exel = transaction_data_exel.fillna(0)
-        logging.info("Форматирование данных")
+        logger.info("Форматирование данных")
         transaction_list = transaction_data_exel.to_dict("records")
         for transaction_dict in transaction_list:
             date_datetime = datetime.datetime.strptime(transaction_dict["Дата операции"], "%d.%m.%Y %H:%M:%S")
             transaction_dict["Дата операции"] = date_datetime
         df = pd.DataFrame(transaction_list)
-        logging.info("Завершено успешно")
+        logger.info("Завершено успешно")
         return df
 
 def dataframe_filter_by_date(df: DataFrame, date_obj: datetime) -> DataFrame:
     """Функция отсортировывает входящий DataFrame, оставляя только операции за текущий месяц"""
-    logging.info("Начало фильтрации операций по текущему месяцу")
+    logger.info("Начало фильтрации операций по текущему месяцу")
     current_month = date_obj.month
     current_year = date_obj.year
     date_of_start = datetime.datetime(current_year, current_month, 1, 0, 0, 0)
     date_of_start_str = date_of_start.strftime("%Y-%m-%d %H:%M:%S")
     current_date_str = date_obj.strftime("%Y-%m-%d %H:%M:%S")
     filtered_by_date_df = df[(date_of_start_str <= df["Дата операции"]) & (df["Дата операции"] <= current_date_str)]
-    logging.info("Завершено успешно")
+    logger.info("Завершено успешно")
     return filtered_by_date_df
 
 def dataframe_filter_by_operation(filtered_by_date_df: DataFrame) -> DataFrame:
     """Функция принимает отсортированный по входящей дате DataFrame и возвращает только траты со статусом OK"""
-    logging.info("Начало фильтрации операций по статусу")
+    logger.info("Начало фильтрации операций по статусу")
     filtered_by_operation_df = filtered_by_date_df[(filtered_by_date_df["Сумма платежа"] < 0) & (filtered_by_date_df["Статус"] == "OK")]
-    logging.info("Завершено успешно")
+    logger.info("Завершено успешно")
     return filtered_by_operation_df
 
 def dataframe_filter_by_source(filtered_by_operation_df: DataFrame) -> DataFrame:
     """Функция принимает отсортированный по дате и типу операции DataFrame и возвращает только операции по картам"""
-    logging.info("Начало фильтрации операций по источнику")
+    logger.info("Начало фильтрации операций по источнику")
     filtered_by_source_df = filtered_by_operation_df[filtered_by_operation_df["Номер карты"] != 0]
-    logging.info("Завершено успешно")
+    logger.info("Завершено успешно")
     return filtered_by_source_df
 
