@@ -1,6 +1,9 @@
 import datetime
 import json
 import os
+from datetime import tzinfo
+
+import pytz
 
 import requests
 
@@ -72,12 +75,54 @@ def get_exchange_rates(date_obj: datetime) -> list[dict]:
     return exchange_rates
 
 
-def get_stock_prices():
-    pass
+def get_stock_prices(datetime_obj: datetime) -> list[dict]:
+    """Функция принимает объект datetime и возвращает список словарей со стоимостью акций. Компании, стоимость акций
+    которых необходимо вернуть, загружаются из файла user_settings.json, находящегося в корне проекта"""
+    stock_prices = []
+    datetime_obj = datetime_obj.replace(tzinfo=None).astimezone(tz=pytz.timezone("US/Eastern"))
+    current_date = datetime.datetime.now(tz=pytz.timezone("US/Eastern")).date()
+    if datetime_obj.date() == current_date:
+        datetime_obj = datetime_obj - datetime.timedelta(days=1)
+        datetime_obj = datetime_obj.replace(hour=19, minute=59, second=0)
+    else:
+        datetime_obj = datetime_obj.replace(second=0)
+    if datetime_obj > datetime_obj.replace(hour=19, minute=59, second=0):
+        datetime_obj = datetime_obj.replace(hour=19, minute=59, second=0)
+    elif datetime_obj < datetime_obj.replace(hour=4, minute=0, second=0):
+        datetime_obj = datetime_obj - datetime.timedelta(days=1)
+        datetime_obj = datetime_obj.replace(hour=19, minute=59, second=0)
+    month_str = datetime_obj.strftime("%Y-%m")
+    datetime_obj_original = datetime_obj
+    with open("../user_settings.json") as f:
+        user_settings = json.load(f)
+        user_stocks = user_settings["user_stocks"]
+    for stock in user_stocks:
+        stock_dict = {"stock": stock}
+        load_dotenv()
+        api_key = os.getenv("API_KEY_STOCK")
+        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={stock}&interval=1min&month={month_str}&outputsize=full&apikey={api_key}"
+        r = requests.get(url)
+        data = r.json()
+        datetime_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+        while datetime_str not in data["Time Series (1min)"]:
+            datetime_obj = datetime_obj - datetime.timedelta(days=1)
+            datetime_obj = datetime_obj.replace(hour=19, minute=59, second=0)
+            datetime_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+            if datetime_obj < datetime_obj_original.replace(day=1):
+                month_str = datetime_obj.strftime("%Y-%m")
+                url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={stock}&interval=1min&month={month_str}&outputsize=full&apikey={api_key}"
+                r = requests.get(url)
+                data = r.json()
+        stock_dict["price"] = round(float(data["Time Series (1min)"][datetime_str]["4. close"]), 2)
+        stock_prices.append(stock_dict)
+    return stock_prices
 
 def date_converter(date_and_time_str: str) -> datetime:
-    """Функция принимает строку с датой и временем в формате YYYY-MM-DD HH:MM:SS и возвращает объект datetime"""
+    """Функция принимает строку с датой и временем в формате YYYY-MM-DD HH:MM:SS и возвращает объект datetime. Если
+    дата позже нынешней - выбрасывает ошибку."""
     date_object = datetime.datetime.strptime(date_and_time_str, "%Y-%m-%d %H:%M:%S")
+    if date_object > datetime.datetime.now():
+        raise ValueError("Входящие дата и время не могут быть позже настоящих")
     return date_object
 
 def file_xlsx_reader(path_to_file: str) -> DataFrame:
