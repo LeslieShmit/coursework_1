@@ -8,7 +8,6 @@ import pytz
 import requests
 
 import pandas as pd
-from black import timezone
 from pandas import DataFrame
 from dotenv import load_dotenv
 from logging import DEBUG
