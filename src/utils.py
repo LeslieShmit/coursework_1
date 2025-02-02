@@ -8,10 +8,11 @@ import pytz
 import requests
 
 import pandas as pd
+from black import timezone
 from pandas import DataFrame
 from dotenv import load_dotenv
 from logging import DEBUG
-from config import PATH_TO_USER_SETTINGS
+from config import PATH_TO_USER_SETTINGS, PATH_TO_OPERATIONS
 
 logger = logging.getLogger("utils")
 logger.setLevel(DEBUG)
@@ -22,10 +23,10 @@ file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 
 
-
 def greeting(date_obj: datetime) -> str:
     """Функция принимает объект datetime и в зависимости от времени возвращает строку с приветствием (Доброе утро:
-     6-00 - 11-00, Добрый день: 12-00 - 18-00, Добрый вечер: 18-00 - 00-00, Доброй ночи: 00-00 - 06-00)"""
+    6-00 - 11-00, Добрый день: 12-00 - 18-00, Добрый вечер: 18-00 - 00-00, Доброй ночи: 00-00 - 06-00)
+    """
     if date_obj.hour < 6:
         logger.info("Время от 00-00 до 06-00: возврат приветствия 'Доброй ночи'")
         result = "Доброй ночи"
@@ -40,20 +41,27 @@ def greeting(date_obj: datetime) -> str:
         result = "Добрый вечер"
     return result
 
+
 def get_card_data(filtered_df: DataFrame) -> list[dict]:
     """Функция принимает отсортированный DataFrame и возвращает список словарей, содержащий последние 4 цифры,
     общую сумму трат и кешбек для каждой карты в DataFrame"""
-    logger.info("Считывание отфильтрованных данных с целью вернуть список словарей, содержащий последние 4 цифры, общую сумму трат и кешбек для каждой карты")
+    logger.info(
+        "Считывание отфильтрованных данных с целью вернуть список словарей, содержащий последние 4 цифры, общую сумму трат и кешбек для каждой карты"  # noqa: E501
+    )
     card_grouped_df = filtered_df.groupby("Номер карты")
     total_transactions_series = card_grouped_df["Сумма платежа"].sum()
-    total_transactions_df = pd.DataFrame({"last_digits": total_transactions_series.index, "total_spent": total_transactions_series.values})
+    total_transactions_df = pd.DataFrame(
+        {
+            "last_digits": total_transactions_series.index,
+            "total_spent": total_transactions_series.values,
+        }
+    )
     total_transactions_df["cashback"] = round(total_transactions_df["total_spent"] / 100, 2)
     card_data = total_transactions_df.to_dict("records")
     for el in card_data:
         el["last_digits"] = el["last_digits"].replace("*", "")
     logger.info("Завершено успешно")
     return card_data
-
 
 
 def get_top_transactions(filtered_df: DataFrame) -> list[dict]:
@@ -63,7 +71,14 @@ def get_top_transactions(filtered_df: DataFrame) -> list[dict]:
     sorted_df = filtered_df.sort_values(by="Сумма платежа")
     sorted_df_top = sorted_df.head()
     sorted_df_top_formatted = sorted_df_top[["Дата операции", "Сумма платежа", "Категория", "Описание"]]
-    sorted_df_top_formatted_renamed = sorted_df_top_formatted.rename(columns={"Дата операции": "date", "Сумма платежа": "amount", "Категория": "category", "Описание": "description"})
+    sorted_df_top_formatted_renamed = sorted_df_top_formatted.rename(
+        columns={
+            "Дата операции": "date",
+            "Сумма платежа": "amount",
+            "Категория": "category",
+            "Описание": "description",
+        }
+    )
     sorted_dict_top_formatted_renamed = sorted_df_top_formatted_renamed.to_dict("records")
     for el in sorted_dict_top_formatted_renamed:
         el["date"] = el["date"].to_pydatetime()
@@ -71,9 +86,11 @@ def get_top_transactions(filtered_df: DataFrame) -> list[dict]:
     logger.info("Завершено успешно")
     return sorted_dict_top_formatted_renamed
 
+
 def get_exchange_rates(date_obj: datetime) -> list[dict]:
     """Функция принимает объект datetime и возвращает список словарей, содержащий курсы валют, актуальные на принятую
-    дату. Валюты загружаются из файла user_settings.json, находящегося в корне проекта"""
+    дату. Валюты загружаются из файла user_settings.json, находящегося в корне проекта
+    """
     logger.info("Запрос на получение курсов валют")
     exchange_rates = []
     date_str = date_obj.strftime("%Y-%m-%d")
@@ -100,10 +117,12 @@ def get_exchange_rates(date_obj: datetime) -> list[dict]:
 
 def get_stock_prices(datetime_obj: datetime) -> list[dict]:
     """Функция принимает объект datetime и возвращает список словарей со стоимостью акций. Компании, стоимость акций
-    которых необходимо вернуть, загружаются из файла user_settings.json, находящегося в корне проекта"""
+    которых необходимо вернуть, загружаются из файла user_settings.json, находящегося в корне проекта
+    """
     logger.info("Запрос на получение стоимости акций")
     stock_prices = []
-    datetime_obj = datetime_obj.replace(tzinfo=None).astimezone(tz=pytz.timezone("US/Eastern"))
+    eastern_tz = pytz.timezone("US/Eastern")
+    datetime_obj = eastern_tz.localize(datetime_obj.replace(tzinfo=None))
     current_date = datetime.datetime.now(tz=pytz.timezone("US/Eastern")).date()
     if datetime_obj.date() == current_date:
         datetime_obj = datetime_obj - datetime.timedelta(days=1)
@@ -124,14 +143,16 @@ def get_stock_prices(datetime_obj: datetime) -> list[dict]:
         stock_dict = {"stock": stock}
         load_dotenv()
         api_key = os.getenv("API_KEY_STOCK")
-        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={stock}&interval=1min&month={month_str}&outputsize=full&apikey={api_key}"
+        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={stock}&interval=1min&month={month_str}&outputsize=full&apikey={api_key}"  # noqa: E501
         r = requests.get(url)
         status_code = r.status_code
         if status_code != 200:
             logger.error(f"Ошибка при получении стоимости акции {stock} {status_code}: {r.reason}")
         data = r.json()
         datetime_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
-        if data == {"Information": "Thank you for using Alpha Vantage! Our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits."}:
+        if data == {
+            "Information": "Thank you for using Alpha Vantage! Our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits."  # noqa: E501
+        }:
             logger.error("Ошибка. Превышен лимит запросов")
             raise requests.exceptions.RequestException("Превышен лимит запросов")
         while datetime_str not in data["Time Series (1min)"]:
@@ -140,7 +161,7 @@ def get_stock_prices(datetime_obj: datetime) -> list[dict]:
             datetime_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
             if datetime_obj < datetime_obj_original.replace(day=1):
                 month_str = datetime_obj.strftime("%Y-%m")
-                url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={stock}&interval=1min&month={month_str}&outputsize=full&apikey={api_key}"
+                url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={stock}&interval=1min&month={month_str}&outputsize=full&apikey={api_key}"  # noqa: E501
                 r = requests.get(url)
                 status_code = r.status_code
                 if status_code != 200:
@@ -150,6 +171,7 @@ def get_stock_prices(datetime_obj: datetime) -> list[dict]:
         stock_prices.append(stock_dict)
     logger.info("Завершено успешно")
     return stock_prices
+
 
 def date_converter(date_and_time_str: str) -> datetime:
     """Функция принимает строку с датой и временем в формате YYYY-MM-DD HH:MM:SS и возвращает объект datetime. Если
@@ -162,8 +184,10 @@ def date_converter(date_and_time_str: str) -> datetime:
     logger.info("Завершено успешно")
     return date_object
 
+
 def file_xlsx_reader(path_to_file: str) -> DataFrame:
-    """Функция принимает путь до файла в формате xlsx и возвращает dataframe, с которым в последствии можно работать."""
+    """Функция принимает путь до файла в формате xlsx и возвращает dataframe, с которым в последствии можно
+    работать."""
     logger.info(f"Открытие файла {path_to_file}")
     try:
         transaction_data_exel = pd.read_excel(path_to_file, parse_dates=True)
@@ -181,6 +205,7 @@ def file_xlsx_reader(path_to_file: str) -> DataFrame:
         logger.info("Завершено успешно")
         return df
 
+
 def dataframe_filter_by_date(df: DataFrame, date_obj: datetime) -> DataFrame:
     """Функция отсортировывает входящий DataFrame, оставляя только операции за текущий месяц"""
     logger.info("Начало фильтрации операций по текущему месяцу")
@@ -193,12 +218,16 @@ def dataframe_filter_by_date(df: DataFrame, date_obj: datetime) -> DataFrame:
     logger.info("Завершено успешно")
     return filtered_by_date_df
 
+
 def dataframe_filter_by_operation(filtered_by_date_df: DataFrame) -> DataFrame:
     """Функция принимает отсортированный по входящей дате DataFrame и возвращает только траты со статусом OK"""
     logger.info("Начало фильтрации операций по статусу")
-    filtered_by_operation_df = filtered_by_date_df[(filtered_by_date_df["Сумма платежа"] < 0) & (filtered_by_date_df["Статус"] == "OK")]
+    filtered_by_operation_df = filtered_by_date_df[
+        (filtered_by_date_df["Сумма платежа"] < 0) & (filtered_by_date_df["Статус"] == "OK")
+    ]
     logger.info("Завершено успешно")
     return filtered_by_operation_df
+
 
 def dataframe_filter_by_source(filtered_by_operation_df: DataFrame) -> DataFrame:
     """Функция принимает отсортированный по дате и типу операции DataFrame и возвращает только операции по картам"""
@@ -206,4 +235,3 @@ def dataframe_filter_by_source(filtered_by_operation_df: DataFrame) -> DataFrame
     filtered_by_source_df = filtered_by_operation_df[filtered_by_operation_df["Номер карты"] != 0]
     logger.info("Завершено успешно")
     return filtered_by_source_df
-

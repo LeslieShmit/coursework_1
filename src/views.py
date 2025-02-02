@@ -3,9 +3,18 @@ import logging
 import os
 
 from config import PATH_TO_OPERATIONS
-from src.utils import date_converter, greeting, file_xlsx_reader, dataframe_filter_by_date, \
-    dataframe_filter_by_operation, dataframe_filter_by_source, get_card_data, get_top_transactions, get_exchange_rates, \
-    get_stock_prices
+from src.utils import (
+    date_converter,
+    greeting,
+    file_xlsx_reader,
+    dataframe_filter_by_date,
+    dataframe_filter_by_operation,
+    dataframe_filter_by_source,
+    get_card_data,
+    get_top_transactions,
+    get_exchange_rates,
+    get_stock_prices,
+)
 from logging import DEBUG
 
 logger = logging.getLogger("views")
@@ -15,6 +24,7 @@ file_handler = logging.FileHandler(abs_file_path, mode="w", encoding="utf-8")
 file_formatter = logging.Formatter("%(asctime)s %(filename)s %(levelname)s: %(message)s")
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
+
 
 def main_page(date_and_time: str) -> object:
     """Основная функция для отображения главной страницы. Связывает функциональности из модуля utils, принимает строку
