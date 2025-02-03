@@ -339,3 +339,44 @@ def test_get_exchange_rates(mock_request):
     with patch("builtins.open", mocked_open):
         result = get_exchange_rates(datetime.datetime(2018, 2, 22, 12, 0, 0))
         assert result == [{"currency": "USD", "rate": 100.12}]
+
+@patch("requests.request")
+def test_get_stock_prices_current_time(mock_request):
+    mock_request.return_value.json.return_value = {
+        "Meta Data": {
+            "1. Information": "Intraday (1min) open, high, low, close prices and volume",
+            "2. Symbol": "IBM",
+            "3. Last Refreshed": "2025-01-31 19:59:00",
+            "4. Interval": "1min",
+            "5. Output Size": "Full size",
+            "6. Time Zone": "US/Eastern",
+        },
+        "Time Series (1min)": {
+            "2025-01-31 19:59:00": {
+                "1. open": "255.2000",
+                "2. high": "255.2000",
+                "3. low": "255.1000",
+                "4. close": "255.1000",
+                "5. volume": "112",
+            },
+            "2025-01-31 19:58:00": {
+                "1. open": "255.4430",
+                "2. high": "255.4430",
+                "3. low": "255.0250",
+                "4. close": "255.3000",
+                "5. volume": "175",
+            },
+            "2025-01-31 19:55:00": {
+                "1. open": "254.0370",
+                "2. high": "254.0370",
+                "3. low": "254.0370",
+                "4. close": "254.0370",
+                "5. volume": "10",
+            },
+        },
+    }
+    mocked_open = mock_open(read_data='{"user_currencies": ["USD"], "user_stocks": ["IBM"]}')
+    with freeze_time("2025-02-01 22:00:00"):
+        with patch("builtins.open", mocked_open):
+            result = get_stock_prices(datetime.datetime(2025, 2, 1, 21, 30, 00))
+            assert result == [{"stock": "IBM", "price": 255.10}]
