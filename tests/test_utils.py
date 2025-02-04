@@ -342,7 +342,7 @@ def test_get_exchange_rates(mock_request):
         result = get_exchange_rates(datetime.datetime(2018, 2, 22, 12, 0, 0))
         assert result == [{"currency": "USD", "rate": 100.12}]
 
-@patch("requests.request")
+@patch("requests.get")
 def test_get_stock_prices_current_time(mock_request):
     mock_request.return_value.json.return_value = {
         "Meta Data": {

@@ -20,7 +20,7 @@ file_handler = logging.FileHandler(abs_file_path, mode="w", encoding="utf-8")
 file_formatter = logging.Formatter("%(asctime)s %(filename)s %(levelname)s: %(message)s")
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
-
+load_dotenv()
 
 def greeting(date_obj: datetime) -> str:
     """Функция принимает объект datetime и в зависимости от времени возвращает строку с приветствием (Доброе утро:
@@ -98,7 +98,6 @@ def get_exchange_rates(date_obj: datetime) -> list[dict]:
         user_currencies = user_settings["user_currencies"]
     for currency in user_currencies:
         currency_dict = {"currency": currency}
-        load_dotenv()
         api_key = os.getenv("API_KEY_EXCHANGE")
         url = f"https://api.apilayer.com/exchangerates_data/convert?to=RUB&from={currency}&amount=1&date={date_str}"
         payload = {}
@@ -140,7 +139,6 @@ def get_stock_prices(datetime_obj: datetime) -> list[dict]:
         user_stocks = user_settings["user_stocks"]
     for stock in user_stocks:
         stock_dict = {"stock": stock}
-        load_dotenv()
         api_key = os.getenv("API_KEY_STOCK")
         url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={stock}&interval=1min&month={month_str}&outputsize=full&apikey={api_key}"  # noqa: E501
         r = requests.get(url)
