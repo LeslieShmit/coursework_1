@@ -1,25 +1,21 @@
 import json
 import logging
 import os
-import datetime
-
-import pandas as pd
+from logging import DEBUG
 
 from config import PATH_TO_OPERATIONS
-from src.reports import write_to_file_decorator
 from src.utils import (
-    date_converter,
-    greeting,
-    file_xlsx_reader,
     dataframe_filter_by_date,
     dataframe_filter_by_operation,
     dataframe_filter_by_source,
+    date_converter,
+    file_xlsx_reader,
     get_card_data,
-    get_top_transactions,
     get_exchange_rates,
     get_stock_prices,
+    get_top_transactions,
+    greeting
 )
-from logging import DEBUG
 
 logger = logging.getLogger("views")
 logger.setLevel(DEBUG)
@@ -28,6 +24,7 @@ file_handler = logging.FileHandler(abs_file_path, mode="w", encoding="utf-8")
 file_formatter = logging.Formatter("%(asctime)s %(filename)s %(levelname)s: %(message)s")
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
+
 
 def main_page(date_and_time: str) -> object:
     """Основная функция для отображения главной страницы. Связывает функциональности из модуля utils, принимает строку

@@ -1,17 +1,16 @@
 import datetime
 import json
-import os
 import logging
-
-import pytz
-
-import requests
+import os
+from logging import DEBUG
 
 import pandas as pd
-from pandas import DataFrame
+import pytz
+import requests
 from dotenv import load_dotenv
-from logging import DEBUG
-from config import PATH_TO_USER_SETTINGS, PATH_TO_OPERATIONS
+from pandas import DataFrame
+
+from config import PATH_TO_USER_SETTINGS
 
 logger = logging.getLogger("utils")
 logger.setLevel(DEBUG)
@@ -21,6 +20,7 @@ file_formatter = logging.Formatter("%(asctime)s %(filename)s %(levelname)s: %(me
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 load_dotenv()
+
 
 def greeting(date_obj: datetime) -> str:
     """Функция принимает объект datetime и в зависимости от времени возвращает строку с приветствием (Доброе утро:

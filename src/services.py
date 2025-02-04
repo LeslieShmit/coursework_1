@@ -1,11 +1,8 @@
-import re
-
 import json
 import logging
 import os
-
+import re
 from logging import DEBUG
-
 
 logger = logging.getLogger("services")
 logger.setLevel(DEBUG)
@@ -15,15 +12,16 @@ file_formatter = logging.Formatter("%(asctime)s %(filename)s %(levelname)s: %(me
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 
+
 def phone_number_search(transactions: list[dict]) -> object:
     """Функция принимает список словарей и возвращает json объект с операциями, в описании которых есть номер
-        телефона."""
+    телефона."""
     logger.info("Начало фильтрации по наличию в описании номера телефона")
     result = []
-    pattern = re.compile(r'\+7\s\d+\s\d+.\d+.\d+')
+    pattern = re.compile(r"\+7\s\d+\s\d+.\d+.\d+")
     for el in transactions:
-       if re.search(pattern, el["Описание"]) is not None:
-           result.append(el)
+        if re.search(pattern, el["Описание"]) is not None:
+            result.append(el)
     if not result:
         logger.warning("Не найдено ни одной операции. Будет возвращен пустой объект")
     final_result = json.dumps(result, indent=4, ensure_ascii=False)

@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def file_xlsx_reader_dict(path_to_file: str) -> list[dict]:
     """Функция принимает путь до файла в формате xlsx и возвращает список словарей, с которым в последствии можно
     работать."""

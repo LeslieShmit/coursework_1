@@ -1,26 +1,23 @@
-import pytest
 import datetime
-import pytz
 import json
-import pandas as pd
+from unittest.mock import MagicMock, mock_open, patch
 
-from unittest.mock import patch, mock_open, MagicMock
+import pandas as pd
+import pytest
+import pytz
 from freezegun import freeze_time
 
-import requests
-
-from config import PATH_TO_OPERATIONS
 from src.utils import (
-    greeting,
-    date_converter,
-    file_xlsx_reader,
     dataframe_filter_by_date,
     dataframe_filter_by_operation,
     dataframe_filter_by_source,
+    date_converter,
+    file_xlsx_reader,
     get_card_data,
-    get_top_transactions,
     get_exchange_rates,
     get_stock_prices,
+    get_top_transactions,
+    greeting
 )
 
 
@@ -342,6 +339,7 @@ def test_get_exchange_rates(mock_request):
         result = get_exchange_rates(datetime.datetime(2018, 2, 22, 12, 0, 0))
         assert result == [{"currency": "USD", "rate": 100.12}]
 
+
 @patch("requests.get")
 def test_get_stock_prices_current_time(mock_request):
     mock_request.return_value.json.return_value = {
@@ -377,13 +375,10 @@ def test_get_stock_prices_current_time(mock_request):
             },
         },
     }
-    mock_user_settings = {
-        "user_currencies": ["USD"],
-        "user_stocks": ["IBM"]
-    }
+    mock_user_settings = {"user_currencies": ["USD"], "user_stocks": ["IBM"]}
 
     # Используем mock_open с read_data в виде байтов
-    with patch("builtins.open", mock_open(read_data=json.dumps(mock_user_settings).encode('utf-8'))):
+    with patch("builtins.open", mock_open(read_data=json.dumps(mock_user_settings).encode("utf-8"))):
         mock_timezone = MagicMock()
         mock_timezone.return_value = pytz.timezone("UTC")
         with patch("pytz.timezone", mock_timezone):
