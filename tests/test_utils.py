@@ -1,8 +1,10 @@
 import pytest
 import datetime
+import pytz
+import json
 import pandas as pd
 
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, MagicMock
 from freezegun import freeze_time
 
 import requests
@@ -375,8 +377,17 @@ def test_get_stock_prices_current_time(mock_request):
             },
         },
     }
-    mocked_open = mock_open(read_data='{"user_currencies": ["USD"], "user_stocks": ["IBM"]}')
-    with freeze_time("2025-02-01 22:00:00"):
-        with patch("builtins.open", mocked_open):
-            result = get_stock_prices(datetime.datetime(2025, 2, 1, 21, 30, 00))
-            assert result == [{"stock": "IBM", "price": 255.10}]
+    mock_user_settings = {
+        "user_currencies": ["USD"],
+        "user_stocks": ["IBM"]
+    }
+
+    # Используем mock_open с read_data в виде байтов
+    with patch("builtins.open", mock_open(read_data=json.dumps(mock_user_settings).encode('utf-8'))):
+        mock_timezone = MagicMock()
+        mock_timezone.return_value = pytz.timezone("UTC")
+        with patch("pytz.timezone", mock_timezone):
+            with freeze_time("2025-02-01 22:00:00"):
+                aware_datetime = datetime.datetime(2025, 2, 1, 21, 30, 00, tzinfo=mock_timezone())
+                result = get_stock_prices(aware_datetime)
+                assert result == [{"stock": "IBM", "price": 255.10}]
